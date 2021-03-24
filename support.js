@@ -169,23 +169,16 @@ const registerHooks = () => {
         .map(u => u.trim())
       urls.map(url => {
         logMessage(`Requesting coverage for **${url}**`)
-        cy.request({
-          url,
-          log: false,
-          failOnStatusCode: false
-        })
-          .then(r => {
-            return Cypress._.get(r, 'body.coverage', null)
-          })
-          .then(coverage => {
-            if (!coverage) {
-              // we did not get code coverage - this is the
-              // original failed request
-              logMessage(`No coverage for: **${url}**`)
-              return
-            }
-            sendCoverage(coverage, `backend: ${url}`)
-          })
+        // See #129 https://github.com/cypress-io/code-coverage/issues/129
+        cy.exec(`curl ${url}`).then(r => {
+          if (!r || !r.stdout) {
+            // we did not get code coverage - this is the
+            // original failed request
+            return;
+          }
+          const coverage = JSON.parse(r.stdout).coverage;
+          sendCoverage(coverage, "backend");
+        });
       })
       logMessage('Finished collecting coverage')
     }
